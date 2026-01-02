@@ -48,6 +48,7 @@ mod simd {
 
 const NETWORK_SCALE: i32 = 380;
 
+const INPUT_DIMENSIONS: usize = 79856;
 const INPUT_BUCKETS: usize = 10;
 
 const L1_SIZE: usize = 512;
@@ -289,7 +290,7 @@ impl Default for Network {
 
 #[repr(C)]
 struct Parameters {
-    ft_threat_weights: Aligned<[[i8; L1_SIZE]; 79856]>,
+    ft_threat_weights: Aligned<[[i8; L1_SIZE]; INPUT_DIMENSIONS]>,
     ft_piece_weights: Aligned<[[i16; L1_SIZE]; INPUT_BUCKETS * 768]>,
     ft_biases: Aligned<[i16; L1_SIZE]>,
     l1_weights: Aligned<[i8; L2_SIZE * L1_SIZE]>,

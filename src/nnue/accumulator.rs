@@ -2,7 +2,7 @@ use super::{simd, Aligned, L1_SIZE, PARAMETERS};
 use crate::{
     board::Board,
     lookup::attacks,
-    nnue::{threats::threat_index, BUCKETS, INPUT_BUCKETS},
+    nnue::{threats::threat_index, BUCKETS, INPUT_BUCKETS, INPUT_DIMENSIONS},
     types::{ArrayVec, Bitboard, Color, Move, MoveKind, Piece, PieceType, Square},
 };
 
@@ -273,7 +273,7 @@ impl ThreatAccumulator {
                 let mirrored = king.file() >= 4;
 
                 let index = threat_index(piece, square, attacked, target, mirrored, pov);
-                if index >= 0 {
+                if index < INPUT_DIMENSIONS as u32 {
                     unsafe { add1(&mut self.values[pov], index as usize) }
                 }
             }
@@ -291,9 +291,9 @@ impl ThreatAccumulator {
 
             let index = threat_index(piece, from, attacked, to, mirrored, pov);
             if add {
-                adds.maybe_push(index >= 0, index as usize);
+                adds.maybe_push(index < INPUT_DIMENSIONS as u32, index as usize);
             } else {
-                subs.maybe_push(index >= 0, index as usize);
+                subs.maybe_push(index < INPUT_DIMENSIONS as u32, index as usize);
             }
         }
 

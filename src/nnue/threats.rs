@@ -3,30 +3,7 @@ use crate::{
     types::{Bitboard, Color, Piece, PieceType, Square},
 };
 
-#[derive(Copy, Clone)]
-struct PiecePair {
-    // Bit layout:
-    // - bits 0..23: base index contribution for this piece-pair
-    // - bits 30..31 : exclusion flags (semi/excluded)
-    inner: u32,
-}
-
-impl PiecePair {
-    fn new(excluded: bool, semi_excluded: bool, base: i32) -> Self {
-        Self {
-            inner: (((semi_excluded && !excluded) as u32) << 30)
-                | ((excluded as u32) << 31)
-                | ((base & 0x3FFFFFFF) as u32),
-        }
-    }
-
-    fn base(self, attacking: Square, attacked: Square) -> isize {
-        let below = ((attacking as u8) < (attacked as u8)) as u32;
-        ((self.inner.wrapping_add(below << 30)) & 0x80FFFFFF) as i32 as isize
-    }
-}
-
-static mut PIECE_PAIR_LOOKUP: [[PiecePair; 12]; 12] = [[PiecePair { inner: 0 }; 12]; 12];
+static mut PIECE_PAIR_LOOKUP: [[[u32; 2]; 12]; 12] = [[[0; 2]; 12]; 12];
 static mut PIECE_OFFSET_LOOKUP: [[i32; 64]; 12] = [[0; 64]; 12];
 static mut ATTACK_INDEX_LOOKUP: [[[u8; 64]; 64]; 12] = [[[0; 64]; 64]; 12];
 
@@ -85,7 +62,10 @@ pub fn initialize() {
             let semi_excluded = attacking_piece == attacked_piece && (enemy || attacking_piece != PieceType::Pawn);
             let excluded = map < 0;
 
-            unsafe { PIECE_PAIR_LOOKUP[attacking][attacked] = PiecePair::new(excluded, semi_excluded, base) };
+            unsafe { PIECE_PAIR_LOOKUP[attacking][attacked][0] = u32::from(excluded) << 30 | base as u32 };
+            unsafe {
+                PIECE_PAIR_LOOKUP[attacking][attacked][1] = u32::from(excluded || semi_excluded) << 30 | base as u32
+            };
         }
     }
 
@@ -102,7 +82,7 @@ pub fn initialize() {
 
 pub fn threat_index(
     piece: Piece, mut from: Square, attacked: Piece, mut to: Square, mirrored: bool, pov: Color,
-) -> isize {
+) -> u32 {
     let flip = (7 * (mirrored as u8)) ^ (56 * (pov as u8));
 
     from ^= flip;
@@ -112,10 +92,8 @@ pub fn threat_index(
     let attacked = Piece::new(Color::new((attacked.piece_color() as u8) ^ (pov as u8)), attacked.piece_type());
 
     unsafe {
-        let pair = PIECE_PAIR_LOOKUP[attacking][attacked];
-
-        pair.base(from, to)
-            + PIECE_OFFSET_LOOKUP[attacking][from] as isize
-            + ATTACK_INDEX_LOOKUP[attacking][from][to] as isize
+        PIECE_PAIR_LOOKUP[attacking][attacked][usize::from((from as u8) < (to as u8))]
+            + PIECE_OFFSET_LOOKUP[attacking][from] as u32
+            + ATTACK_INDEX_LOOKUP[attacking][from][to] as u32
     }
 }
