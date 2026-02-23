@@ -111,3 +111,22 @@ impl Not for Bitboard {
         Self(!self.0)
     }
 }
+
+impl std::fmt::Display for Bitboard {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let mut ascii = String::new();
+        ascii.push_str(" +---+---+---+---+---+---+---+---+\n");
+        for rank in (0..8).rev() {
+            ascii.push('|');
+            for file in 0..8 {
+                let square = Square::from_rank_file(rank, file);
+                let symbol = if self.contains(square) { 'X' } else { '.' };
+                ascii.push_str(&format!(" {symbol} |"));
+            }
+            ascii.push_str(&format!(" {}\n", rank + 1));
+            ascii.push_str(" +---+---+---+---+---+---+---+---+\n");
+        }
+        ascii.push_str("   a   b   c   d   e   f   g   h\n");
+        write!(f, "{}", ascii)
+    }
+}
