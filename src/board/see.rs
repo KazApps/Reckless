@@ -1,5 +1,5 @@
 use crate::{
-    lookup::{between, bishop_attacks, rook_attacks},
+    lookup::{bishop_attacks, ray_pass, rook_attacks},
     types::{Bitboard, Color, Move, PieceType},
 };
 
@@ -45,13 +45,17 @@ impl super::Board {
         let diagonal = self.pieces(PieceType::Bishop) | self.pieces(PieceType::Queen);
         let orthogonal = self.pieces(PieceType::Rook) | self.pieces(PieceType::Queen);
 
-        let white_pins = self.pinned(Color::White) & !between(self.king_square(Color::White), mv.to());
-        let black_pins = self.pinned(Color::Black) & !between(self.king_square(Color::Black), mv.to());
-
-        let allowed = !(white_pins | black_pins);
+        let king_rays =
+            [ray_pass(self.king_square(Color::White), mv.to()), ray_pass(self.king_square(Color::Black), mv.to())];
 
         loop {
-            let our_attackers = attackers & allowed & self.colors(stm);
+            let mut our_attackers = attackers & self.colors(stm);
+
+            // Exclude pinned pieces if pinners are still on the board
+            if (self.pinners(!stm) & occupancies) != Bitboard(0) {
+                our_attackers &= !(self.pinned(stm) & !king_rays[stm]);
+            }
+
             if our_attackers.is_empty() {
                 break;
             }
